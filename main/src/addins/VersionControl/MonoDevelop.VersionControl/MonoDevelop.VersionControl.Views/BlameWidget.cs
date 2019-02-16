@@ -37,6 +37,7 @@ using MonoDevelop.Components;
 using MonoDevelop.Components.Commands;
 using MonoDevelop.Ide.Fonts;
 using MonoDevelop.Ide.Editor;
+using MonoDevelop.Ide.Gui;
 
 namespace MonoDevelop.VersionControl.Views
 {
@@ -49,11 +50,24 @@ namespace MonoDevelop.VersionControl.Views
 	
 	class BlameWidget : Bin
 	{
+		const int RightPadding = 7;
+
 		Revision revision;
+		DocumentToolButton revertButton;
+		Gtk.HBox revertButtonContainer;
+
+		public event EventHandler RevisionChanged;
 
 		public Revision Revision {
 			get {
 				return revision;
+			}
+			private set {
+				if (revision == value) {
+					return;
+				}
+				revision = value;
+				RevisionChanged?.Invoke (this, EventArgs.Empty);
 			}
 		}
 
@@ -70,6 +84,16 @@ namespace MonoDevelop.VersionControl.Views
 		
 		public Adjustment Vadjustment {
 			get { return this.vAdjustment; }
+		}
+
+		internal void SetToolbar (DocumentToolbar toolbar)
+		{
+			toolbar.Add (revertButtonContainer, true);
+		}
+
+		internal void RemoveToolbar (DocumentToolbar toolbar)
+		{
+			toolbar.Remove (revertButtonContainer);
 		}
 
 		public Adjustment Hadjustment {
@@ -164,7 +188,20 @@ namespace MonoDevelop.VersionControl.Views
 				QueueDraw ();
 			};
 			editor.DoPopupMenu = ShowPopup;
+
+			revertButton = new DocumentToolButton ("vc-revert-command", GettextCatalog.GetString ("Back to Authors"));
+			revertButton.GetNativeWidget<Gtk.Widget> ();
+			revertButton.Clicked += RevertRevisionClicked;
+
+			revertButtonContainer = new Gtk.HBox ();
+			revertButtonContainer.PackEnd (revertButton, false, false, RightPadding);
+
 			Show ();
+		}
+
+		void RevertRevisionClicked (object src, EventArgs args)
+		{
+			overview.Reset ();
 		}
 
 		internal void Reset ()
@@ -530,7 +567,13 @@ namespace MonoDevelop.VersionControl.Views
 				if (rev == null)
 					return;
 				
-				widget.revision = rev;
+				widget.Revision = rev;
+				UpdateAnnotations ();
+			}
+
+			internal void Reset ()
+			{
+				widget.Revision = null;
 				UpdateAnnotations ();
 			}
 

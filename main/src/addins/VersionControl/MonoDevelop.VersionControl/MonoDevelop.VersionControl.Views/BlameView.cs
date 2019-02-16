@@ -43,12 +43,46 @@ namespace MonoDevelop.VersionControl.Views
 		
 		public override Control Control { 
 			get {
-				if (widget == null)
+				if (widget == null) {
 					widget = new BlameWidget (info);
+					widget.RevisionChanged += Widget_RevisionChanged;
+				}
 				return widget;
 			}
 		}
-		
+
+		void Widget_RevisionChanged (object sender, EventArgs e)
+		{
+			RefreshToolbar ();
+		}
+
+		void RefreshToolbar ()
+		{
+			if (WorkbenchWindow == null) {
+				return;
+			}
+			ShowHideToolbar ();
+		}
+
+		void ShowHideToolbar ()
+		{
+			var toolbar = WorkbenchWindow.GetToolbar (this);
+			if (widget.Revision != null) {
+				widget.SetToolbar (toolbar);
+			} else {
+				widget.RemoveToolbar (toolbar);
+			}
+			toolbar.ShowAll ();
+		}
+
+		public override void Dispose ()
+		{
+			if (widget != null) {
+				widget.RevisionChanged -= Widget_RevisionChanged;
+			}
+			base.Dispose ();
+		}
+
 		public BlameView (VersionControlDocumentInfo info) : base (GettextCatalog.GetString ("Authors"), GettextCatalog.GetString ("Shows the authors of the current file"))
 		{
 			this.info = info;
@@ -89,6 +123,8 @@ namespace MonoDevelop.VersionControl.Views
 					buffer.SetCaretLocation (blameWidget.Editor.Caret.Line, blameWidget.Editor.Caret.Column, usePulseAnimation: false, centerCaret: false);
 				}
 			}
+			var toolbar = WorkbenchWindow.GetToolbar (this);
+			widget.RemoveToolbar (toolbar);
 		}
 
 		#endregion
